@@ -845,6 +845,19 @@ test_array_copy_sized (void)
   g_array_unref (array1);
 }
 
+static void
+assert_ptr_array_null_terminated (GPtrArray *array, gboolean null_terminated)
+{
+  g_assert_cmpint (null_terminated, ==, g_ptr_array_is_null_terminated (array));
+  if (array->pdata)
+    {
+      if (null_terminated)
+        g_assert (!array->pdata[array->len]);
+    }
+  else
+    g_assert_cmpint (array->len, ==, 0);
+}
+
 /* Check g_ptr_array_steal() function */
 static void
 pointer_array_steal (void)
@@ -936,16 +949,26 @@ pointer_array_insert (void)
 }
 
 static void
-pointer_array_ref_count (void)
+pointer_array_ref_count (gconstpointer test_data)
 {
+  const gboolean null_terminated = GPOINTER_TO_INT (test_data);
   GPtrArray *gparray;
   GPtrArray *gparray2;
   gint i;
   gint sum = 0;
 
-  gparray = g_ptr_array_new ();
+  if (null_terminated)
+    gparray = g_ptr_array_new_null_terminated (0, NULL, null_terminated);
+  else
+    gparray = g_ptr_array_new ();
+
+  assert_ptr_array_null_terminated (gparray, null_terminated);
+
   for (i = 0; i < 10000; i++)
-    g_ptr_array_add (gparray, GINT_TO_POINTER (i));
+    {
+      g_ptr_array_add (gparray, GINT_TO_POINTER (i));
+      assert_ptr_array_null_terminated (gparray, null_terminated);
+    }
 
   /* check we can ref, unref and still access the array */
   gparray2 = g_ptr_array_ref (gparray);
@@ -953,6 +976,8 @@ pointer_array_ref_count (void)
   g_ptr_array_unref (gparray2);
   for (i = 0; i < 10000; i++)
     g_assert (g_ptr_array_index (gparray, i) == GINT_TO_POINTER (i));
+
+  assert_ptr_array_null_terminated (gparray, null_terminated);
 
   g_ptr_array_foreach (gparray, sum_up, &sum);
   g_assert (sum == 49995000);
@@ -962,6 +987,8 @@ pointer_array_ref_count (void)
   g_ptr_array_free (gparray, TRUE);
 
   g_assert_cmpint (gparray2->len, ==, 0);
+  assert_ptr_array_null_terminated (gparray, null_terminated);
+
   g_ptr_array_unref (gparray2);
 }
 
@@ -1600,18 +1627,31 @@ steal_destroy_notify (gpointer data)
 /* Test that g_ptr_array_steal_index() and g_ptr_array_steal_index_fast() can
  * remove elements from a pointer array without the #GDestroyNotify being called. */
 static void
-pointer_array_steal_index (void)
+pointer_array_steal_index (gconstpointer test_data)
 {
+  const gboolean null_terminated = GPOINTER_TO_INT (test_data);
   guint i1 = 0, i2 = 0, i3 = 0, i4 = 0;
   gpointer out1, out2;
-  GPtrArray *array = g_ptr_array_new_with_free_func (steal_destroy_notify);
+  GPtrArray *array;
+
+  if (null_terminated)
+    array = g_ptr_array_new_null_terminated (0, steal_destroy_notify, null_terminated);
+  else
+    array = g_ptr_array_new_with_free_func (steal_destroy_notify);
+
+  assert_ptr_array_null_terminated (array, null_terminated);
 
   g_ptr_array_add (array, &i1);
   g_ptr_array_add (array, &i2);
+
+  assert_ptr_array_null_terminated (array, null_terminated);
+
   g_ptr_array_add (array, &i3);
   g_ptr_array_add (array, &i4);
 
   g_assert_cmpuint (array->len, ==, 4);
+
+  assert_ptr_array_null_terminated (array, null_terminated);
 
   /* Remove a single element. */
   out1 = g_ptr_array_steal_index (array, 0);
@@ -1624,6 +1664,8 @@ pointer_array_steal_index (void)
   g_assert_true (g_ptr_array_index (array, 1) == &i3);
   g_assert_true (g_ptr_array_index (array, 2) == &i4);
 
+  assert_ptr_array_null_terminated (array, null_terminated);
+
   /* Remove another element, quickly. */
   out2 = g_ptr_array_steal_index_fast (array, 0);
   g_assert_true (out2 == &i2);
@@ -1633,6 +1675,8 @@ pointer_array_steal_index (void)
   g_assert_cmpuint (array->len, ==, 2);
   g_assert_true (g_ptr_array_index (array, 0) == &i4);
   g_assert_true (g_ptr_array_index (array, 1) == &i3);
+
+  assert_ptr_array_null_terminated (array, null_terminated);
 
   /* Check that destroying the pointer array doesn’t affect the stolen elements. */
   g_ptr_array_unref (array);
@@ -2020,7 +2064,8 @@ main (int argc, char *argv[])
   /* pointer arrays */
   g_test_add_func ("/pointerarray/add", pointer_array_add);
   g_test_add_func ("/pointerarray/insert", pointer_array_insert);
-  g_test_add_func ("/pointerarray/ref-count", pointer_array_ref_count);
+  g_test_add_data_func ("/pointerarray/ref-count/not-null-terminated", GINT_TO_POINTER (0), pointer_array_ref_count);
+  g_test_add_data_func ("/pointerarray/ref-count/null-terminated", GINT_TO_POINTER (1), pointer_array_ref_count);
   g_test_add_func ("/pointerarray/free-func", pointer_array_free_func);
   g_test_add_func ("/pointerarray/array_copy", pointer_array_copy);
   g_test_add_func ("/pointerarray/array_extend", pointer_array_extend);
@@ -2032,7 +2077,8 @@ main (int argc, char *argv[])
   g_test_add_func ("/pointerarray/find/empty", pointer_array_find_empty);
   g_test_add_func ("/pointerarray/find/non-empty", pointer_array_find_non_empty);
   g_test_add_func ("/pointerarray/steal", pointer_array_steal);
-  g_test_add_func ("/pointerarray/steal_index", pointer_array_steal_index);
+  g_test_add_data_func ("/pointerarray/steal_index/not-null-terminated", GINT_TO_POINTER (0), pointer_array_steal_index);
+  g_test_add_data_func ("/pointerarray/steal_index/null-terminated", GINT_TO_POINTER (1), pointer_array_steal_index);
 
   /* byte arrays */
   g_test_add_func ("/bytearray/steal", byte_array_steal);
