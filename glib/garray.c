@@ -1105,7 +1105,7 @@ ptr_array_new (guint reserved_size,
  *
  * Returns: the new #GPtrArray
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_new (void)
 {
   return ptr_array_new (0, NULL);
@@ -1249,7 +1249,7 @@ g_ptr_array_copy (GPtrArray *array,
  *
  * Returns: the new #GPtrArray
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_sized_new (guint reserved_size)
 {
   return ptr_array_new (reserved_size, NULL);
@@ -1300,7 +1300,7 @@ g_array_copy (GArray *array)
  *
  * Since: 2.22
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_new_with_free_func (GDestroyNotify element_free_func)
 {
   return ptr_array_new (0, element_free_func);
@@ -1324,7 +1324,7 @@ g_ptr_array_new_with_free_func (GDestroyNotify element_free_func)
  *
  * Since: 2.30
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_new_full (guint          reserved_size,
                       GDestroyNotify element_free_func)
 {
@@ -1365,7 +1365,7 @@ g_ptr_array_set_free_func (GPtrArray      *array,
  *
  * Since: 2.22
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_ref (GPtrArray *array)
 {
   GRealPtrArray *rarray = (GRealPtrArray *)array;
@@ -1682,7 +1682,7 @@ g_ptr_array_steal_index_fast (GPtrArray *array,
  *
  * Since: 2.4
  */
-GPtrArray*
+GPtrArray *
 g_ptr_array_remove_range (GPtrArray *array,
                           guint      index_,
                           guint      length)
