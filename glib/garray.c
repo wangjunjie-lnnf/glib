@@ -1511,8 +1511,8 @@ g_ptr_array_unref (GPtrArray *array)
  * function has been set for @array.
  *
  * Note that if the array is %NULL terminated and @free_seg is %FALSE
- * and the pdata is %NULL (and the length is zero), the this function
- * will return %NULL too and not allocate an empty %NULL terminated buffer.
+ * then this will always return an allocated %NULL termianted buffer.
+ * If pdata is previously %NULL, a new buffer will be allocated.
  *
  * This function is not thread-safe. If using a #GPtrArray from multiple
  * threads, use only the atomic g_ptr_array_ref() and g_ptr_array_unref()
@@ -1569,7 +1569,11 @@ ptr_array_free (GPtrArray      *array,
       segment = NULL;
     }
   else
-    segment = rarray->pdata;
+    {
+      segment = rarray->pdata;
+      if (!segment && rarray->null_terminated)
+        segment = (gpointer *) g_new0 (char *, 1);
+    }
 
   if (flags & PRESERVE_WRAPPER)
     {
