@@ -1143,6 +1143,10 @@ g_ptr_array_new (void)
  * the underlying array is preserved for use elsewhere and returned
  * to the caller.
  *
+ * Note that if the array is %NULL terminated this may still return
+ * %NULL if the length of the array was zero and pdata was not yet
+ * allocated.
+ *
  * Even if set, the #GDestroyNotify function will never be called
  * on the current contents of the array and the caller is
  * responsible for freeing the array elements.
