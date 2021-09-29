@@ -134,6 +134,8 @@ G_BEGIN_DECLS
  *  parameter is guaranteed to remain valid and 
  *  unmodified for the lifetime of the parameter. 
  *  Since 2.8
+ * @G_PARAM_NO_VALIDATION: indicates that g_param_value_validate() will
+ *   not change values for this parameter. Since 2.72
  * @G_PARAM_EXPLICIT_NOTIFY: calls to g_object_set_property() for this
  *   property will not automatically result in a "notify" signal being
  *   emitted: the implementation must call g_object_notify() themselves
@@ -162,6 +164,7 @@ typedef enum
   G_PARAM_STATIC_NICK	      = 1 << 6,
   G_PARAM_STATIC_BLURB	      = 1 << 7,
   /* User defined flags go here */
+  G_PARAM_NO_VALIDATION       = 1 << 29,
   G_PARAM_EXPLICIT_NOTIFY     = 1 << 30,
   /* Avoid warning with -Wpedantic for gcc6 */
   G_PARAM_DEPRECATED          = (gint)(1u << 31)
