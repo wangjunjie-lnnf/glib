@@ -517,6 +517,7 @@ test_complex_construction_run (PerformanceTest *test,
   for (i = 0; i < n_objects; i++)
     objects[i] = g_object_new (type, "val1", 5, "val2", "thousand", NULL);
 }
+
 static void
 test_construction_finish (PerformanceTest *test,
 			  gpointer _data)
