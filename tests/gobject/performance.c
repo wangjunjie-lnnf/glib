@@ -254,7 +254,7 @@ struct _ComplexObject
 {
   GObject parent_instance;
   int val1;
-  int val2;
+  char *val2;
 };
 
 struct _ComplexObjectClass
@@ -298,6 +298,10 @@ static guint complex_signals[COMPLEX_LAST_SIGNAL] = { 0 };
 static void
 complex_object_finalize (GObject *object)
 {
+  ComplexObject *c = COMPLEX_OBJECT (object);
+
+  g_free (c->val2);
+
   G_OBJECT_CLASS (complex_object_parent_class)->finalize (object);
 }
 
@@ -315,7 +319,8 @@ complex_object_set_property (GObject         *object,
       complex->val1 = g_value_get_int (value);
       break;
     case PROP_VAL2:
-      complex->val2 = g_value_get_int (value);
+      g_free (complex->val2);
+      complex->val2 = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -337,7 +342,7 @@ complex_object_get_property (GObject         *object,
       g_value_set_int (value, complex->val1);
       break;
     case PROP_VAL2:
-      g_value_set_int (value, complex->val2);
+      g_value_set_string (value, complex->val2);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -416,13 +421,11 @@ complex_object_class_init (ComplexObjectClass *class)
  						     G_PARAM_CONSTRUCT | G_PARAM_READWRITE));
   g_object_class_install_property (object_class,
 				   PROP_VAL2,
-				   g_param_spec_int ("val2",
- 						     "val2",
- 						     "val2",
- 						     0,
- 						     G_MAXINT,
- 						     43,
- 						     G_PARAM_READWRITE));
+				   g_param_spec_string ("val2",
+ 						        "val2",
+ 						        "val2",
+ 						        NULL,
+ 						        G_PARAM_READWRITE | G_PARAM_NO_VALIDATION));
 
 
 }
@@ -445,7 +448,7 @@ complex_test_iface_init (gpointer         g_iface,
 static void
 complex_object_init (ComplexObject *complex_object)
 {
-  complex_object->val2 = 43;
+  complex_object->val1 = 42;
 }
 
 /*************************************************************
@@ -501,6 +504,19 @@ test_construction_run (PerformanceTest *test,
     objects[i] = g_object_new (type, NULL);
 }
 
+static void
+test_complex_construction_run (PerformanceTest *test,
+                               gpointer _data)
+{
+  struct ConstructionTest *data = _data;
+  GObject **objects = data->objects;
+  GType type = data->type;
+  int i, n_objects;
+
+  n_objects = data->n_objects;
+  for (i = 0; i < n_objects; i++)
+    objects[i] = g_object_new (type, "val1", 5, "val2", "thousand", NULL);
+}
 static void
 test_construction_finish (PerformanceTest *test,
 			  gpointer _data)
@@ -885,7 +901,7 @@ static PerformanceTest tests[] = {
     complex_object_get_type,
     test_construction_setup,
     test_construction_init,
-    test_construction_run,
+    test_complex_construction_run,
     test_construction_finish,
     test_construction_teardown,
     test_construction_print_result
