@@ -81,7 +81,7 @@ option('fam',
 
 option('tests',
        type : 'boolean',
-       value : true,
+       value : false,
        description : 'build tests')
 
 option('installed_tests',

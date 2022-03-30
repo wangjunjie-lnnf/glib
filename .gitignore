@@ -28,3 +28,5 @@ INSTALL
 # Meson
 /meson-build/
 /subprojects/*/
+
+/build
