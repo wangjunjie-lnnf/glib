@@ -262,8 +262,7 @@ struct _GSource {
 struct _GSourceCallbackFuncs {
   void (*ref)(gpointer cb_data);
   void (*unref)(gpointer cb_data);
-  void (*get)(gpointer cb_data, GSource *source, GSourceFunc *func,
-              gpointer *data);
+  void (*get)(gpointer cb_data, GSource *source, GSourceFunc *func, gpointer *data);
 };
 
 /**
@@ -277,8 +276,7 @@ typedef void (*GSourceDummyMarshal)(void);
 struct _GSourceFuncs {
   gboolean (*prepare)(GSource *source, gint *timeout_); /* Can be NULL */
   gboolean (*check)(GSource *source);                   /* Can be NULL */
-  gboolean (*dispatch)(GSource *source, GSourceFunc callback,
-                       gpointer user_data);
+  gboolean (*dispatch)(GSource *source, GSourceFunc callback, gpointer user_data);
   void (*finalize)(GSource *source); /* Can be NULL */
 
   /*< private >*/
@@ -360,7 +358,7 @@ struct _GSourceFuncs {
  */
 #define G_SOURCE_CONTINUE TRUE
 
-/* GMainContext: */
+/* #poll#1 GMainContext: */
 
 GLIB_AVAILABLE_IN_ALL
 GMainContext *g_main_context_new(void);
@@ -372,6 +370,8 @@ GLIB_AVAILABLE_IN_ALL
 GMainContext *g_main_context_ref(GMainContext *context);
 GLIB_AVAILABLE_IN_ALL
 void g_main_context_unref(GMainContext *context);
+
+/* #poll#1.1 g_main_context_default */
 GLIB_AVAILABLE_IN_ALL
 GMainContext *g_main_context_default(void);
 
@@ -383,15 +383,11 @@ gboolean g_main_context_pending(GMainContext *context);
 /* For implementation of legacy interfaces
  */
 GLIB_AVAILABLE_IN_ALL
-GSource *g_main_context_find_source_by_id(GMainContext *context,
-                                          guint source_id);
+GSource *g_main_context_find_source_by_id(GMainContext *context, guint source_id);
 GLIB_AVAILABLE_IN_ALL
-GSource *g_main_context_find_source_by_user_data(GMainContext *context,
-                                                 gpointer user_data);
+GSource *g_main_context_find_source_by_user_data(GMainContext *context, gpointer user_data);
 GLIB_AVAILABLE_IN_ALL
-GSource *g_main_context_find_source_by_funcs_user_data(GMainContext *context,
-                                                       GSourceFuncs *funcs,
-                                                       gpointer user_data);
+GSource *g_main_context_find_source_by_funcs_user_data(GMainContext *context, GSourceFuncs *funcs, gpointer user_data);
 
 /* Low level functions for implementing custom main loops.
  */
@@ -406,14 +402,16 @@ gboolean g_main_context_is_owner(GMainContext *context);
 GLIB_DEPRECATED_IN_2_58_FOR(g_main_context_is_owner)
 gboolean g_main_context_wait(GMainContext *context, GCond *cond, GMutex *mutex);
 
+/* #poll#1.2 g_main_context_prepare */
 GLIB_AVAILABLE_IN_ALL
 gboolean g_main_context_prepare(GMainContext *context, gint *priority);
+/* #poll#1.3 g_main_context_query */
 GLIB_AVAILABLE_IN_ALL
-gint g_main_context_query(GMainContext *context, gint max_priority,
-                          gint *timeout_, GPollFD *fds, gint n_fds);
+gint g_main_context_query(GMainContext *context, gint max_priority, gint *timeout_, GPollFD *fds, gint n_fds);
+/* #poll#1.4 g_main_context_check */
 GLIB_AVAILABLE_IN_ALL
-gboolean g_main_context_check(GMainContext *context, gint max_priority,
-                              GPollFD *fds, gint n_fds);
+gboolean g_main_context_check(GMainContext *context, gint max_priority, GPollFD *fds, gint n_fds);
+/* #poll#1.5 g_main_context_dispatch */
 GLIB_AVAILABLE_IN_ALL
 void g_main_context_dispatch(GMainContext *context);
 
@@ -545,8 +543,9 @@ gboolean g_main_loop_is_running(GMainLoop *loop);
 GLIB_AVAILABLE_IN_ALL
 GMainContext *g_main_loop_get_context(GMainLoop *loop);
 
-/* GSource: */
+/* #poll#2 GSource: */
 
+/* #poll#2.1 g_source_new */
 GLIB_AVAILABLE_IN_ALL
 GSource *g_source_new(GSourceFuncs *source_funcs, guint struct_size);
 
@@ -560,6 +559,7 @@ GSource *g_source_ref(GSource *source);
 GLIB_AVAILABLE_IN_ALL
 void g_source_unref(GSource *source);
 
+/* #poll#2.2 g_source_attach */
 GLIB_AVAILABLE_IN_ALL
 guint g_source_attach(GSource *source, GMainContext *context);
 GLIB_AVAILABLE_IN_ALL
@@ -580,8 +580,7 @@ GLIB_AVAILABLE_IN_ALL
 GMainContext *g_source_get_context(GSource *source);
 
 GLIB_AVAILABLE_IN_ALL
-void g_source_set_callback(GSource *source, GSourceFunc func, gpointer data,
-                           GDestroyNotify notify);
+void g_source_set_callback(GSource *source, GSourceFunc func, gpointer data, GDestroyNotify notify);
 
 GLIB_AVAILABLE_IN_ALL
 void g_source_set_funcs(GSource *source, GSourceFuncs *funcs);
@@ -606,8 +605,7 @@ gint64 g_source_get_ready_time(GSource *source);
 GLIB_AVAILABLE_IN_2_36
 gpointer g_source_add_unix_fd(GSource *source, gint fd, GIOCondition events);
 GLIB_AVAILABLE_IN_2_36
-void g_source_modify_unix_fd(GSource *source, gpointer tag,
-                             GIOCondition new_events);
+void g_source_modify_unix_fd(GSource *source, gpointer tag, GIOCondition new_events);
 GLIB_AVAILABLE_IN_2_36
 void g_source_remove_unix_fd(GSource *source, gpointer tag);
 GLIB_AVAILABLE_IN_2_36
@@ -616,9 +614,9 @@ GIOCondition g_source_query_unix_fd(GSource *source, gpointer tag);
 
 /* Used to implement g_source_connect_closure and internally*/
 GLIB_AVAILABLE_IN_ALL
-void g_source_set_callback_indirect(GSource *source, gpointer callback_data,
-                                    GSourceCallbackFuncs *callback_funcs);
+void g_source_set_callback_indirect(GSource *source, gpointer callback_data, GSourceCallbackFuncs *callback_funcs);
 
+/* #poll#2.3 g_source_add_poll */
 GLIB_AVAILABLE_IN_ALL
 void g_source_add_poll(GSource *source, GPollFD *fd);
 GLIB_AVAILABLE_IN_ALL

@@ -540,8 +540,7 @@ void g_main_context_unref(GMainContext *context) {
 
   /* Free pending dispatches */
   for (i = 0; i < context->pending_dispatches->len; i++)
-    g_source_unref_internal(context->pending_dispatches->pdata[i], context,
-                            FALSE);
+    g_source_unref_internal(context->pending_dispatches->pdata[i], context, FALSE);
 
   /* g_source_iter_next() assumes the context is locked. */
   LOCK_CONTEXT(context);
@@ -1209,8 +1208,7 @@ guint g_source_attach(GSource *source, GMainContext *context) {
 
   result = g_source_attach_unlocked(source, context, TRUE);
 
-  TRACE(GLIB_MAIN_SOURCE_ATTACH(g_source_get_name(source), source, context,
-                                result));
+  TRACE(GLIB_MAIN_SOURCE_ATTACH(g_source_get_name(source), source, context, result));
 
   UNLOCK_CONTEXT(context);
 
@@ -1391,6 +1389,7 @@ void g_source_add_poll(GSource *source, GPollFD *fd) {
 
   if (context) {
     if (!SOURCE_BLOCKED(source))
+      /* #poll#2.3.1 创建GPollRec */
       g_main_context_add_poll_unlocked(context, source->priority, fd);
     UNLOCK_CONTEXT(context);
   }
@@ -3057,6 +3056,7 @@ static void g_main_dispatch(GMainContext *context) {
       was_in_call = source->flags & G_HOOK_FLAG_IN_CALL;
       source->flags |= G_HOOK_FLAG_IN_CALL;
 
+      /* #poll#1.5.1 source#callback初始化附加数据 */
       if (cb_funcs) cb_funcs->get(cb_data, source, &callback, &user_data);
 
       UNLOCK_CONTEXT(context);
@@ -3070,11 +3070,10 @@ static void g_main_dispatch(GMainContext *context) {
 
       begin_time_nsec = G_TRACE_CURRENT_TIME;
 
-      TRACE(GLIB_MAIN_BEFORE_DISPATCH(g_source_get_name(source), source,
-                                      dispatch, callback, user_data));
+      TRACE(GLIB_MAIN_BEFORE_DISPATCH(g_source_get_name(source), source, dispatch, callback, user_data));
+      /* #poll#1.5.2 source#dispatch */
       need_destroy = !(*dispatch)(source, callback, user_data);
-      TRACE(GLIB_MAIN_AFTER_DISPATCH(g_source_get_name(source), source,
-                                     dispatch, need_destroy));
+      TRACE(GLIB_MAIN_AFTER_DISPATCH(g_source_get_name(source), source, dispatch, need_destroy));
 
       g_trace_mark(begin_time_nsec, G_TRACE_CURRENT_TIME - begin_time_nsec,
                    "GLib", "GSource.dispatch", "%s ⇒ %s",
@@ -3275,13 +3274,12 @@ gboolean g_main_context_wait(GMainContext *context, GCond *cond,
  *            source already ready.
  *
  * Prepares to poll sources within a main loop. The resulting information
- * for polling is determined by calling g_main_context_query ().
+ * for polling is determined by calling g_main_context_query().
  *
  * You must have successfully acquired the context with
  * g_main_context_acquire() before you may call this function.
  *
- * Returns: %TRUE if some source is ready to be dispatched
- *               prior to polling.
+ * Returns: %TRUE if some source is ready to be dispatched prior to polling.
  **/
 gboolean g_main_context_prepare(GMainContext *context, gint *priority) {
   guint i;
@@ -3297,9 +3295,7 @@ gboolean g_main_context_prepare(GMainContext *context, gint *priority) {
   context->time_is_fresh = FALSE;
 
   if (context->in_check_or_prepare) {
-    g_warning(
-        "g_main_context_prepare() called recursively from within a "
-        "source's check() or prepare() member.");
+    g_warning("g_main_context_prepare() called recursively from within a source's check() or prepare() member.");
     UNLOCK_CONTEXT(context);
     return FALSE;
   }
@@ -3319,19 +3315,17 @@ gboolean g_main_context_prepare(GMainContext *context, gint *priority) {
 #endif
 
   /* If recursing, clear list of pending dispatches */
-
   for (i = 0; i < context->pending_dispatches->len; i++) {
     if (context->pending_dispatches->pdata[i])
-      g_source_unref_internal((GSource *)context->pending_dispatches->pdata[i],
-                              context, TRUE);
+      g_source_unref_internal((GSource *)context->pending_dispatches->pdata[i], context, TRUE);
   }
   g_ptr_array_set_size(context->pending_dispatches, 0);
 
-  /* Prepare all sources */
-
   context->timeout = -1;
 
+  /* Prepare all sources */
   g_source_iter_init(&iter, context, TRUE);
+
   while (g_source_iter_next(&iter, &source)) {
     gint source_timeout = -1;
 
@@ -3352,6 +3346,7 @@ gboolean g_main_context_prepare(GMainContext *context, gint *priority) {
 
         begin_time_nsec = G_TRACE_CURRENT_TIME;
 
+        /* #poll#1.2.1 source#prepare */
         result = (*prepare)(source, &source_timeout);
         TRACE(GLIB_MAIN_AFTER_PREPARE(source, prepare, source_timeout));
 
@@ -3457,6 +3452,7 @@ gint g_main_context_query(GMainContext *context, gint max_priority,
   /* fds is filled sequentially from poll_records. Since poll_records
    * are incrementally sorted by file descriptor identifier, fds will
    * also be incrementally sorted.
+   * context->poll_records参考@poll#2.3.1
    */
   n_poll = 0;
   lastpollrec = NULL;
@@ -3532,10 +3528,7 @@ gboolean g_main_context_check(GMainContext *context, gint max_priority,
   LOCK_CONTEXT(context);
 
   if (context->in_check_or_prepare) {
-    g_warning(
-        "g_main_context_check() called recursively from within a "
-        "source's check() or "
-        "prepare() member.");
+    g_warning("g_main_context_check() called recursively from within a source's check() or prepare() member.");
     UNLOCK_CONTEXT(context);
     return FALSE;
   }
@@ -3578,9 +3571,7 @@ gboolean g_main_context_check(GMainContext *context, gint max_priority,
     /* Update all consecutive GPollRecs that match. */
     while (pollrec && pollrec->fd->fd == fds[i].fd) {
       if (pollrec->priority <= max_priority) {
-        pollrec->fd->revents =
-            fds[i].revents &
-            (pollrec->fd->events | G_IO_ERR | G_IO_HUP | G_IO_NVAL);
+        pollrec->fd->revents = fds[i].revents & (pollrec->fd->events | G_IO_ERR | G_IO_HUP | G_IO_NVAL);
       }
       pollrec = pollrec->next;
     }
@@ -3609,6 +3600,7 @@ gboolean g_main_context_check(GMainContext *context, gint max_priority,
 
         begin_time_nsec = G_TRACE_CURRENT_TIME;
 
+        /* #poll#1.4.1 source#check */
         result = (*check)(source);
 
         TRACE(GLIB_MAIN_AFTER_CHECK(source, check, result));
@@ -3632,8 +3624,7 @@ gboolean g_main_context_check(GMainContext *context, gint max_priority,
          * (or if we have no check) then we can still be ready if
          * any of our fds poll as ready.
          */
-        for (tmp_list = source->priv->fds; tmp_list;
-             tmp_list = tmp_list->next) {
+        for (tmp_list = source->priv->fds; tmp_list; tmp_list = tmp_list->next) {
           GPollFD *pollfd = tmp_list->data;
 
           if (pollfd->revents) {
@@ -3662,6 +3653,7 @@ gboolean g_main_context_check(GMainContext *context, gint max_priority,
       }
     }
 
+    /* #poll#1.4.2 ready之后加入pending_dispatches */
     if (source->flags & G_SOURCE_READY) {
       g_source_ref(source);
       g_ptr_array_add(context->pending_dispatches, source);
